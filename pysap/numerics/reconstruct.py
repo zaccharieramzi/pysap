@@ -110,6 +110,10 @@ def sparse_rec_fista(gradient_op, linear_op, prox_op, cost_op,
     prox_op.weights = weights
 
     # Define the optimizer
+    beta_param = gradient_op.inv_spec_rad
+    if lambda_update_params.get("restart_strategy") == "greedy":
+        lambda_update_params["min_beta"] = gradient_op.inv_spec_rad
+        beta_param *= 1.3
     opt = ForwardBackward(
         x=alpha,
         grad=gradient_op,
@@ -119,7 +123,7 @@ def sparse_rec_fista(gradient_op, linear_op, prox_op, cost_op,
         metric_call_period=metric_call_period,
         metrics=metrics or {},
         linear=linear_op,
-        beta_param=gradient_op.inv_spec_rad,
+        beta_param=beta_param,
         lambda_param=lambda_init,
         **lambda_update_params,
     )
