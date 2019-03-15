@@ -36,7 +36,7 @@ from modopt.opt.reweight import cwbReweight
 def sparse_rec_fista(gradient_op, linear_op, prox_op, cost_op,
                      mu=1e-6, lambda_init=1.0, max_nb_of_iter=300,
                      metric_call_period=5, metrics=None,
-                     verbose=0, **lambda_update_params):
+                     verbose=0, pov="synthesis", **lambda_update_params):
     """ The FISTA sparse reconstruction without reweightings.
 
     .. note:: At the moment, tested only with 2D data.
@@ -66,6 +66,8 @@ def sparse_rec_fista(gradient_op, linear_op, prox_op, cost_op,
         [@metric, metric_parameter]}. See modopt for the metrics API.
     verbose: int (optional, default 0)
         the verbosity level.
+    pov: str
+        either synthesis or analysis. Defaults to synthesis.
     lambda_update_params: dict,
         Parameters for the lambda update in FISTA mode
 
@@ -105,9 +107,14 @@ def sparse_rec_fista(gradient_op, linear_op, prox_op, cost_op,
         print("-" * 40)
 
     # Define the proximity dual operator
-    weights = copy.deepcopy(alpha)
-    weights[...] = mu
-    prox_op.weights = weights
+    if pov == "synthesis":
+        weights = copy.deepcopy(alpha)
+        weights[...] = mu
+        prox_op.weights = weights
+    else:
+        weights = prox_op.linear_op.op(copy.deepcopy(alpha))
+        weights[...] = mu
+        prox_op.prox_op.weights = weights
 
     # Define the optimizer
     beta_param = gradient_op.inv_spec_rad
