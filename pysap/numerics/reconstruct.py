@@ -29,7 +29,7 @@ import numpy as np
 from modopt.math.stats import sigma_mad
 from modopt.opt.linear import Identity
 from modopt.opt.proximity import Positivity
-from modopt.opt.algorithms import Condat, ForwardBackward
+from modopt.opt.algorithms import Condat, ForwardBackward, POGM
 from modopt.opt.reweight import cwbReweight
 
 
@@ -84,9 +84,9 @@ def sparse_rec_fista(gradient_op, linear_op, prox_op, cost_op,
     """
     # Check inputs
     start = time.clock()
-    if not linear_op.transform.__is_decimated__:
-        warnings.warn("Undecimated wavelets shouldn't be used with FISTA: "
-                      "non optimal solution.")
+    # if not linear_op.transform.__is_decimated__:
+    #     warnings.warn("Undecimated wavelets shouldn't be used with FISTA: "
+    #                   "non optimal solution.")
 
     # Define the initial primal and dual solutions
     x_init = np.zeros(gradient_op.fourier_op.shape, dtype=np.complex)
@@ -156,7 +156,7 @@ def sparse_rec_fista(gradient_op, linear_op, prox_op, cost_op,
     else:
         costs = None
 
-    return x_final, linear_op.transform, costs, opt.metrics
+    return x_final, linear_op, costs, opt.metrics
 
 
 def sparse_rec_condatvu(gradient_op, linear_op, prox_dual_op, cost_op,
@@ -379,3 +379,34 @@ def sparse_rec_condatvu(gradient_op, linear_op, prox_dual_op, cost_op,
         costs = None
 
     return x_final, transform_output, costs, opt.metrics
+
+
+def sparse_rec_pogm(prox_op, gradient_op, im_shape, mu, max_iter, metric_call_period, xi_restart, metrics_):
+    """
+    xi_restart is sigma bar in kim_2018.
+    """
+    # prox op dirty setting
+    weights_tmp = prox_op.linear_op.op(np.zeros(im_shape))
+    prox_op.prox_op.weights = mu * np.ones_like(weights_tmp)
+    beta = gradient_op.inv_spec_rad
+    # modopt algo
+    zeros_right_shape = np.zeros(im_shape, dtype='complex128')
+    opt = POGM(
+        u=zeros_right_shape,
+        x=zeros_right_shape,
+        y=zeros_right_shape,
+        z=zeros_right_shape,
+        grad=gradient_op,
+        prox=prox_op,
+        cost=None,
+        beta_param=beta,
+        sigma_bar=xi_restart,
+        metric_call_period=metric_call_period,
+        metrics=metrics_,
+        auto_iterate=False,
+    )
+    opt.iterate(max_iter=max_iter)
+    x_new = opt.x_final
+    metrics = opt.metrics
+
+    return x_new, metrics
