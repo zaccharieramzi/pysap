@@ -16,7 +16,6 @@ from .tools import mr_transform
 from .tools import mr_filter
 from .tools import mr_deconv
 from .tools import mr_recons
-from .tools import mr3d_recons
 from .tools import mr3d_transform
 from .tools import mr3d_filter
 from .tools import mr2d1d_trans
